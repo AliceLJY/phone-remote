@@ -6,6 +6,12 @@
 Tab / Ctrl+C / ⌘ 组合做成按钮。指令经局域网或 Tailscale 送到 Mac，在本机合成
 真实键盘事件，打进当前最前面的窗口。
 
+<p align="center">
+  <img src="docs/screenshot.jpeg" alt="手机上运行的 phone-remote" width="320">
+  <br>
+  <em>添加到主屏幕后全屏运行的样子。按钮都是普通 HTML，想加想改都很容易。</em>
+</p>
+
 ## 解决什么问题
 
 用远程桌面类工具操作另一台 Mac 时，**语音输入打不进去**：远程软件转发物理按键
