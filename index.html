@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="遥控">
+<meta name="theme-color" content="#0f1115">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f1115'/><text y='72' x='50' font-size='60' text-anchor='middle'>🕹️</text></svg>">
+<title>mini 遥控</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg:#0f1115; --card:#191c22; --btn:#252a33; --btn2:#2f3542;
+    --line:#2a2f38; --fg:#e8ebf0; --dim:#8b93a1; --accent:#4c8dff; --danger:#ff5c5c; --ok:#3ddc84;
+  }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font-family:-apple-system,system-ui,"PingFang SC",sans-serif;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  body { display:flex; flex-direction:column; gap:12px; padding:14px; }
+  header { display:flex; align-items:center; gap:8px; }
+  header h1 { font-size:17px; margin:0; font-weight:600; }
+  #dot { width:9px; height:9px; border-radius:50%; background:var(--dim); transition:.2s; }
+  #dot.ok { background:var(--ok); } #dot.err { background:var(--danger); }
+  #toast { position:fixed; left:14px; right:14px; top:calc(env(safe-area-inset-top) + 8px);
+    background:var(--danger); color:#fff; padding:10px 12px; border-radius:10px; font-size:13px;
+    transform:translateY(-200%); transition:.25s; z-index:9; word-break:break-all; }
+  #toast.show { transform:translateY(0); }
+  textarea { width:100%; min-height:96px; resize:none; background:var(--card); color:var(--fg);
+    border:1px solid var(--line); border-radius:12px; padding:12px; font-size:17px; line-height:1.4; }
+  .row { display:flex; gap:8px; }
+  .grid { display:grid; gap:8px; }
+  button { background:var(--btn); color:var(--fg); border:1px solid var(--line); border-radius:12px;
+    font-size:15px; padding:14px 8px; font-weight:500; user-select:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; min-height:52px; touch-action:manipulation; }
+  button:active { background:var(--btn2); transform:scale(.96); }
+  button.pri { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.wide { flex:1; }
+  button.sm { font-size:13px; padding:10px 6px; min-height:46px; }
+  .sect { font-size:11px; color:var(--dim); letter-spacing:.5px; margin:6px 2px -2px; text-transform:uppercase; }
+  .g4 { grid-template-columns:repeat(4,1fr); }
+  .g5 { grid-template-columns:repeat(5,1fr); }
+  .nav { grid-template-columns:repeat(3,1fr); max-width:230px; margin:0 auto; }
+  .nav .sp { visibility:hidden; }
+  kbd { font:inherit; }
+</style>
+</head>
+<body>
+<div id="toast"></div>
+<header>
+  <span id="dot"></span>
+  <h1>mini 遥控</h1>
+  <span style="flex:1"></span>
+  <button class="sm" style="min-height:36px;padding:6px 12px" onclick="ping()">测试连接</button>
+</header>
+
+<textarea id="ta" placeholder="在这里语音输入 / 打字，点「发送」打到 mini…" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
+<div class="row">
+  <button class="pri wide" onclick="typeText(false)">发送</button>
+  <button class="pri wide" onclick="typeText(true)">发送 ↵</button>
+  <button class="sm" style="flex:0 0 64px" onclick="ta.value='';ta.focus()">清空</button>
+</div>
+
+<div class="sect">方向</div>
+<div class="grid nav">
+  <span class="sp"></span><button onclick="key('up')">↑</button><span class="sp"></span>
+  <button onclick="key('left')">←</button><button onclick="key('down')">↓</button><button onclick="key('right')">→</button>
+</div>
+
+<div class="sect">编辑</div>
+<div class="grid g4">
+  <button onclick="key('tab')">Tab</button>
+  <button onclick="key('enter')">Enter ↵</button>
+  <button onclick="key('esc')">Esc</button>
+  <button onclick="key('backspace')">⌫</button>
+</div>
+
+<div class="sect">终端</div>
+<div class="grid g5">
+  <button class="sm" onclick="key('ctrl-c')">^C</button>
+  <button class="sm" onclick="key('ctrl-d')">^D</button>
+  <button class="sm" onclick="key('ctrl-r')">^R</button>
+  <button class="sm" onclick="key('ctrl-l')">^L 清屏</button>
+  <button class="sm" onclick="key('ctrl-u')">^U</button>
+</div>
+
+<div class="sect">系统 ⌘</div>
+<div class="grid g4">
+  <button class="sm" onclick="key('cmd-c')">⌘C</button>
+  <button class="sm" onclick="key('cmd-v')">⌘V</button>
+  <button class="sm" onclick="key('cmd-z')">⌘Z</button>
+  <button class="sm" onclick="key('cmd-a')">⌘A</button>
+  <button class="sm" onclick="key('cmd-s')">⌘S</button>
+  <button class="sm" onclick="key('cmd-f')">⌘F</button>
+  <button class="sm" onclick="key('cmd-tab')">⌘Tab</button>
+  <button class="sm" onclick="key('cmd-w')">⌘W</button>
+</div>
+
+<script>
+const T = new URLSearchParams(location.search).get("t") || "";
+const ta = document.getElementById("ta");
+const dot = document.getElementById("dot");
+const toast = document.getElementById("toast");
+let toastTimer;
+
+function flash(msg) {
+  toast.textContent = msg;
+  toast.classList.add("show");
+  dot.className = "err";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 4000);
+}
+function okDot() { dot.className = "ok"; setTimeout(() => { if (!toast.classList.contains("show")) dot.className = ""; }, 600); }
+function vibe() { if (navigator.vibrate) navigator.vibrate(8); }
+
+async function post(path, body) {
+  if (!T) { flash("缺 token：请用带 ?t=… 的完整地址打开"); return; }
+  try {
+    const r = await fetch(path + "?t=" + encodeURIComponent(T), {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body || {}),
+    });
+    if (!r.ok) { flash("mini 返回错误：" + (await r.text())); return; }
+    okDot();
+  } catch (e) { flash("连不上 mini：" + e.message); }
+}
+function key(a) { vibe(); post("/key", { action: a }); }
+function typeText(enter) {
+  const v = ta.value;
+  if (!v && !enter) return;
+  vibe();
+  post("/type", { text: v, enter: !!enter });
+  ta.value = ""; ta.focus();
+}
+async function ping() {
+  try {
+    const r = await fetch("/health");
+    if (r.ok) { okDot(); flashOk("已连上 mini ✓"); } else flash("health 异常");
+  } catch (e) { flash("连不上 mini：" + e.message); }
+}
+function flashOk(msg) { toast.style.background = "var(--ok)"; toast.textContent = msg; toast.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { toast.classList.remove("show"); toast.style.background = "var(--danger)"; }, 1800); }
+window.addEventListener("load", ping);
+</script>
+</body>
+</html>

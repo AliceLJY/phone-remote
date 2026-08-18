@@ -1,0 +1,5 @@
+.token
+*.log
+*.pid
+node_modules/
+.clip.tmp
