@@ -7,6 +7,12 @@ phone's own keyboard/voice input), and tap buttons for arrows, Tab, Ctrl+C, ⌘
 combos. Commands reach the Mac over your LAN/Tailscale and are injected as real
 keyboard events into whatever window is frontmost.
 
+<p align="center">
+  <img src="docs/screenshot.jpeg" alt="phone-remote running on a phone" width="320">
+  <br>
+  <em>Running as a home-screen web app. Buttons are plain HTML — add your own.</em>
+</p>
+
 ## Why
 
 When you drive a headless/remote Mac through a remote-desktop tool, **voice
