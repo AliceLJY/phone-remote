@@ -1,5 +1,7 @@
 # phone-remote
 
+**English** | [简体中文](README_CN.md)
+
 Turn a phone into a wireless keyboard + shortcut pad for a Mac.
 
 Open a web page on the phone, type or **dictate** into the text box (using the
@@ -101,4 +103,4 @@ to support a new one (`{ code: <AppleScript key code> }` or
   back empty). `osascript`'s `the clipboard` goes through AppKit and works.
 - Keys land in the frontmost window — if another app steals focus, they go there.
 
-See `README_CN.md` for the Chinese guide. MIT licensed.
+MIT licensed.
