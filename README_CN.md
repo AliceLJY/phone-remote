@@ -2,11 +2,15 @@
 
 [English](README.md) | **简体中文**
 
-把手机变成 Mac 的无线键盘 + 快捷键遥控面板。
+把手机变成 Mac 的无线键盘 + 快捷键遥控面板 + CLI 启动器。
 
 手机浏览器打开一个网页，文本框里用**手机自带输入法（含语音）**打字，方向键 /
 Tab / Ctrl+C / ⌘ 组合做成按钮。指令经局域网或 Tailscale 送到 Mac，在本机合成
 真实键盘事件，打进当前最前面的窗口。
+
+顶部还有一排「一键打开」：点一下，Mac 上就开出一个新终端窗口，跑起 Claude Code /
+Codex / Kimi，工作目录落在你指定的地方，窗口自己提到最前。配合下面的文本框，完整
+流程是 **打开工具 → 语音说需求 → 点「发送 ↵」**，全程不碰 Mac 的键盘。
 
 <p align="center">
   <img src="docs/screenshot.jpeg" alt="手机上运行的 phone-remote" width="320">
@@ -68,7 +72,11 @@ http://100.x.y.z:8787/?t=<token>
 手机上打开它（走 Tailscale，或同一局域网用 `<your-mac>.local:8787`），然后
 **添加到主屏幕**——就成了一个全屏 App，token 带在里面，点开即用。
 
-用之前确认 Mac 最前面的窗口就是你要输入的地方。
+三步走：顶部「一键打开」挑一个 CLI（新窗口会自己跑到最前面），文本框里语音说出
+需求，点「发送 ↵」。接着说下一轮就重复后两步。
+
+不走「一键打开」时（比如你已经手动开好了终端），先确认 Mac 最前面的窗口就是你要
+输入的地方——按键是打给最前窗口的。
 
 ## 自定义按钮
 
@@ -81,6 +89,21 @@ http://100.x.y.z:8787/?t=<token>
 `key()` 接受 `server.js` 里 `KEYS` 白名单中的任意名字；要加新键就在那张表里加一行
 （`{ code: <AppleScript key code> }` 或 `{ char: "x", mods: ["cmd","shift"] }`）。
 
+「一键打开」同理，走 `server.js` 里的 `APPS` 白名单：
+
+```js
+const APPS = {
+  cc: { label: "Claude Code", cmd: "claude" },
+  // 想加工具就补一行，命令字符串写死在这里
+};
+```
+
+```html
+<button class="sm" onclick="launch('cc')">Claude Code</button>
+```
+
+新终端的工作目录默认是 home。想固定到某个项目，给服务设环境变量 `LAUNCH_CWD`。
+
 ## 安全
 
 - 只监听局域网 / Tailscale，**绝对不要把这个端口转发到公网**。能连到端口且拿到
@@ -89,6 +112,9 @@ http://100.x.y.z:8787/?t=<token>
   生成）。没 token 一律 401。
 - 用户输入绝不拼进 shell 或 AppleScript 命令：文本经临时文件中转、用
   `read POSIX file … as «class utf8»` 读取，快捷键走固定白名单，没有注入面。
+- 「一键打开」是同一套白名单思路：前端只传 `cc` / `codex` / `kimi` 这种 key 名，
+  真正执行的命令字符串写死在 `APPS` 表里，**请求体里的字符一个都进不了被执行的
+  脚本**。表里没有的名字直接 400，不会开出任何窗口。
 
 ## 已知限制
 
@@ -96,5 +122,11 @@ http://100.x.y.z:8787/?t=<token>
 - 刻意不用 `pbcopy`：在非 Aqua / 后台会话里它连不到 GUI 剪贴板，**写入看似成功、
   `pbpaste` 读回是空的**（实测踩过）。`osascript` 的 `the clipboard` 走 AppKit 正常。
 - 按键打进最前面的窗口——要是别的 App 抢了焦点，键就打给它了。
+- 「一键打开」走 `open -a Terminal`（LaunchServices，不需要额外的「自动化」授权）。
+  把窗口提到最前这一步由启动脚本自己发 `activate` 完成，不在服务端做：本服务由
+  launchd 拉起、没有 UI，系统不让它把别的 app 提到前台（实测 open 出来的窗口会
+  停在后台）。而脚本是 Terminal 自己的子进程，它发的 activate 就作数。
+- CLI 退出后那个终端窗口就结束了。想接着干再点一次按钮——刻意没做「退出后留在
+  shell 里」，那要多绕一层交互式 shell，不值当。
 
 MIT 协议。

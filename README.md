@@ -2,12 +2,18 @@
 
 **English** | [简体中文](README_CN.md)
 
-Turn a phone into a wireless keyboard + shortcut pad for a Mac.
+Turn a phone into a wireless keyboard + shortcut pad + CLI launcher for a Mac.
 
 Open a web page on the phone, type or **dictate** into the text box (using the
 phone's own keyboard/voice input), and tap buttons for arrows, Tab, Ctrl+C, ⌘
 combos. Commands reach the Mac over your LAN/Tailscale and are injected as real
 keyboard events into whatever window is frontmost.
+
+There's also a row of **one-tap launchers** at the top: tap one and a fresh
+Terminal window opens on the Mac running Claude Code / Codex / Kimi, in the
+working directory you picked, brought to the front for you. Together with the
+text box below it the loop is **launch the tool → dictate the prompt → tap
+"send ↵"** — without touching the Mac's keyboard.
 
 <p align="center">
   <img src="docs/screenshot.jpeg" alt="phone-remote running on a phone" width="320">
@@ -70,7 +76,13 @@ Open it on the phone (over Tailscale, or `<your-mac>.local:8787` on the same
 LAN), then **Add to Home Screen** — it becomes a full-screen app that carries
 its own token, indistinguishable from a native one.
 
-Make sure the target Mac's frontmost window is where you want the text to land.
+Three taps: pick a CLI from **one-tap launch** at the top (the new window brings
+itself to the front), dictate into the text box, tap **send ↵**. For the next
+turn just repeat the last two.
+
+When you skip the launcher (say you already opened a terminal by hand), make
+sure the Mac's frontmost window is where you want the text to land — keys go to
+whatever is in front.
 
 ## Customizing buttons
 
@@ -84,6 +96,23 @@ Buttons are plain HTML in `index.html`:
 to support a new one (`{ code: <AppleScript key code> }` or
 `{ char: "x", mods: ["cmd","shift"] }`).
 
+The launcher buttons work the same way, against the `APPS` whitelist in
+`server.js`:
+
+```js
+const APPS = {
+  cc: { label: "Claude Code", cmd: "claude" },
+  // add a row per tool; the command string lives here, not in the request
+};
+```
+
+```html
+<button class="sm" onclick="launch('cc')">Claude Code</button>
+```
+
+New terminals open in your home directory by default. Point them somewhere else
+with the `LAUNCH_CWD` environment variable on the service.
+
 ## Security
 
 - Bind is LAN/Tailscale only — do **not** port-forward this to the internet.
@@ -93,6 +122,10 @@ to support a new one (`{ code: <AppleScript key code> }` or
 - User input is never concatenated into a shell or AppleScript command: text is
   passed via a temp file and read with `read POSIX file … as «class utf8»`,
   shortcuts go through a fixed whitelist. No injection surface.
+- The launcher follows the same whitelist rule: the client only ever sends a key
+  name like `cc` / `codex` / `kimi`, and the command string that actually runs is
+  hardcoded in the `APPS` table. **Not one character from the request body
+  reaches the executed script.** Unknown names get a 400 and open no window.
 
 ## Notes / limitations
 
@@ -102,5 +135,13 @@ to support a new one (`{ code: <AppleScript key code> }` or
   fails to reach the GUI pasteboard (writes appear to succeed, `pbpaste` reads
   back empty). `osascript`'s `the clipboard` goes through AppKit and works.
 - Keys land in the frontmost window — if another app steals focus, they go there.
+- The launcher uses `open -a Terminal` (LaunchServices — no extra Automation
+  grant needed). Raising the window is done by the launch script itself, not by
+  the service: this service is started by launchd and has no UI, so the system
+  won't let it bring another app forward (windows it opens stay in the
+  background — verified). The script, being Terminal's own child, can.
+- When the CLI exits, so does the window. Tap the button again for a new one —
+  keeping the shell alive afterwards would need another interactive-shell layer,
+  which isn't worth it.
 
 MIT licensed.

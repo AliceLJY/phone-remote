@@ -3,3 +3,4 @@
 *.pid
 node_modules/
 .clip.tmp
+.launch.command
