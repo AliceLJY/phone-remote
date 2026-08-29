@@ -15,10 +15,16 @@ working directory you picked, brought to the front for you. Together with the
 text box below it the loop is **launch the tool → dictate the prompt → tap
 "send ↵"** — without touching the Mac's keyboard.
 
+Those three are just what I happen to use. **Put whatever CLI you like there** —
+aider, gemini, opencode, your own script, even `htop` or `lazygit`. Anything that
+runs as one shell command works; it's one row in the `APPS` table (see
+"Customizing buttons" below).
+
 <p align="center">
   <img src="docs/screenshot.jpeg" alt="phone-remote running on a phone" width="320">
   <br>
-  <em>Running as a home-screen web app. Buttons are plain HTML — add your own.</em>
+  <em>Running as a home-screen web app. Buttons are plain HTML — the launcher row
+  takes whatever CLI you like, one row in a whitelist and one button in the page.</em>
 </p>
 
 ## Why
@@ -86,7 +92,8 @@ whatever is in front.
 
 ## Customizing buttons
 
-Buttons are plain HTML in `index.html`:
+**This section is the point: that row is meant to be edited.** Buttons are plain
+HTML in `index.html`:
 
 ```html
 <button onclick="key('ctrl-r')">^R</button>
@@ -109,6 +116,10 @@ const APPS = {
 ```html
 <button class="sm" onclick="launch('cc')">Claude Code</button>
 ```
+
+`cmd` is just a shell command — another AI CLI, your own script, a TUI like
+`lazygit`, whatever. Write the full path if it isn't on PATH (that's what the
+Kimi row does).
 
 New terminals open in your home directory by default. Point them somewhere else
 with the `LAUNCH_CWD` environment variable on the service.
