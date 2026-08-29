@@ -12,10 +12,15 @@ Tab / Ctrl+C / ⌘ 组合做成按钮。指令经局域网或 Tailscale 送到 M
 Codex / Kimi，工作目录落在你指定的地方，窗口自己提到最前。配合下面的文本框，完整
 流程是 **打开工具 → 语音说需求 → 点「发送 ↵」**，全程不碰 Mac 的键盘。
 
+这三个只是我自己在用的。**换成你喜欢的任何 CLI 都行**——aider、gemini、opencode、
+你自己写的脚本，甚至 `htop`、`lazygit`，只要是一条能在终端里跑起来的命令就行，
+`APPS` 表加一行的事（见下面「自定义按钮」）。
+
 <p align="center">
   <img src="docs/screenshot.jpeg" alt="手机上运行的 phone-remote" width="320">
   <br>
-  <em>添加到主屏幕后全屏运行的样子。按钮都是普通 HTML，想加想改都很容易。</em>
+  <em>添加到主屏幕后全屏运行的样子。按钮都是普通 HTML——顶部那排想放什么 CLI
+  都行，白名单加一行、按钮加一行的事。</em>
 </p>
 
 ## 解决什么问题
@@ -80,7 +85,7 @@ http://100.x.y.z:8787/?t=<token>
 
 ## 自定义按钮
 
-按钮就是 `index.html` 里的普通 HTML：
+**这一节是重点：这排按钮本来就是给你改的。** 按钮就是 `index.html` 里的普通 HTML：
 
 ```html
 <button onclick="key('ctrl-r')">^R</button>
@@ -101,6 +106,9 @@ const APPS = {
 ```html
 <button class="sm" onclick="launch('cc')">Claude Code</button>
 ```
+
+`cmd` 就是一条普通的 shell 命令，写什么跑什么：别的 AI CLI、你自己的脚本、
+`lazygit` 这类终端工具都行。不在 PATH 里就写全路径（Kimi 那行就是这么处理的）。
 
 新终端的工作目录默认是 home。想固定到某个项目，给服务设环境变量 `LAUNCH_CWD`。
 
