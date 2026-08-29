@@ -40,6 +40,7 @@
   button.wide { flex:1; }
   button.sm { font-size:13px; padding:10px 6px; min-height:46px; }
   .sect { font-size:11px; color:var(--dim); letter-spacing:.5px; margin:6px 2px -2px; text-transform:uppercase; }
+  .g3 { grid-template-columns:repeat(3,1fr); }
   .g4 { grid-template-columns:repeat(4,1fr); }
   .g5 { grid-template-columns:repeat(5,1fr); }
   .nav { grid-template-columns:repeat(3,1fr); max-width:230px; margin:0 auto; }
@@ -55,6 +56,13 @@
   <span style="flex:1"></span>
   <button class="sm" style="min-height:36px;padding:6px 12px" onclick="ping()">测试连接</button>
 </header>
+
+<div class="sect">一键打开</div>
+<div class="grid g3">
+  <button class="sm" onclick="launch('cc')">Claude Code</button>
+  <button class="sm" onclick="launch('codex')">Codex</button>
+  <button class="sm" onclick="launch('kimi')">Kimi</button>
+</div>
 
 <textarea id="ta" placeholder="在这里语音输入 / 打字，点「发送」打到 mini…" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
 <div class="row">
@@ -126,6 +134,7 @@ async function post(path, body) {
   } catch (e) { flash("连不上 mini：" + e.message); }
 }
 function key(a) { vibe(); post("/key", { action: a }); }
+function launch(a) { vibe(); post("/launch", { app: a }); }
 function typeText(enter) {
   const v = ta.value;
   if (!v && !enter) return;

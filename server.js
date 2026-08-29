@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// phone-remote —— 把手机当 Mac(mini) 的无线键盘 + 快捷键遥控面板
+// phone-remote —— 把手机当 Mac(mini) 的无线键盘 + 快捷键遥控面板 + CLI 启动器
 //
 // 原理：手机浏览器打开本服务的网页，文本框用手机输入法(含语音)输入，
 // 快捷键做成按钮。指令发到本服务后，在 *本机* 用 osascript 合成键盘事件，
@@ -22,6 +22,7 @@ const PORT = Number(process.env.PORT) || 8787;
 const HOST = process.env.HOST || "0.0.0.0";
 const DIR = __dirname;
 const CLIP_TMP = path.join(DIR, ".clip.tmp"); // 文本中转文件（覆盖写，已 gitignore）
+const LAUNCH_TMP = path.join(DIR, ".launch.command"); // 一键打开的启动脚本（覆盖写，已 gitignore）
 
 // ── 持久 token（首次生成写入 .token，重启后 URL 不变）──
 const tokenFile = path.join(DIR, ".token");
@@ -62,6 +63,17 @@ const KEYS = {
   "opt-right": { code: 124, mods: ["opt"] },
 };
 
+// ── 应用白名单：一键在新终端窗口里启动某个 CLI ──
+// 同 KEYS 的思路：前端只传 key 名，命令字符串写死在这里，用户输入永远进不来。
+// 想加工具就在这里补一行，再去 index.html 的「一键打开」区加个按钮。
+const APPS = {
+  cc: { label: "Claude Code", cmd: "claude" },
+  codex: { label: "Codex", cmd: "codex" },
+  kimi: { label: "Kimi", cmd: "$HOME/.kimi-code/bin/kimi" }, // 不在 PATH，得写全路径
+};
+// 新终端的工作目录。默认 home；想固定到某个项目就给服务设环境变量 LAUNCH_CWD。
+const LAUNCH_CWD = process.env.LAUNCH_CWD || os.homedir();
+
 function buildKeyScript(k) {
   const target = k.char !== undefined ? `keystroke "${k.char}"` : `key code ${k.code}`;
   const using = k.mods && k.mods.length
@@ -97,6 +109,33 @@ function typeText(text) {
   ]);
 }
 
+// shell 单引号转义：把值裹进单引号，内部的单引号按 '"'"' 的老办法拆开。
+const shq = (v) => "'" + String(v).replace(/'/g, "'\\''") + "'";
+
+// 一键启动：写一个 .command 脚本，交给 open 让 Terminal 跑起来。
+// 为什么不用 `tell application "Terminal" to do script`：那条路走 Apple Events，
+//   需要单独的「自动化」TCC 授权，而本服务由 launchd 后台拉起，授权弹窗未必有人看得见。
+//   open 走 LaunchServices，不需要额外授权 —— 实测从非 GUI 会话也能开出窗口并执行脚本。
+// 脚本内容全部来自 APPS 表和 LAUNCH_CWD 两个常量，没有一个字符来自请求体，无注入面。
+// simplified: 用 exec，CLI 退出后窗口即完；要接着干就再点一次按钮。
+//
+// 窗口抢焦点这件事放在脚本里做，不在服务端做：本服务由 launchd 拉起、无 UI，
+// 系统不让它把别的 app 提到前台（实测 open 出来的窗口停在后台）。而脚本是
+// Terminal 自己的子进程，activate 由它发出就能生效，也不需要给本服务申请
+// 「自动化」授权。失败就静默跳过——窗口照样开着，只是得手点一下。
+function launchApp(key) {
+  const app = APPS[key];
+  const script = `#!/bin/zsh\ncd ${shq(LAUNCH_CWD)} || exit 1\nosascript -e 'tell application "Terminal" to activate' >/dev/null 2>&1\nexec ${app.cmd}\n`;
+  fs.writeFileSync(LAUNCH_TMP, script, { mode: 0o700 });
+  fs.chmodSync(LAUNCH_TMP, 0o700); // writeFileSync 的 mode 只在新建时生效，覆盖写要补一刀
+  return new Promise((resolve, reject) => {
+    execFile("open", ["-a", "Terminal", LAUNCH_TMP], { timeout: 5000 }, (err, _out, stderr) => {
+      if (err) reject(new Error((stderr || err.message).trim()));
+      else resolve();
+    });
+  });
+}
+
 function readBody(req, limit = 1_000_000) {
   return new Promise((resolve, reject) => {
     let n = 0; const chunks = [];
@@ -123,7 +162,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && url.pathname === "/health") return send(res, 200, { ok: true });
 
   // 以下为注入类接口，一律校验 token
-  if (req.method === "POST" && (url.pathname === "/type" || url.pathname === "/key")) {
+  if (req.method === "POST" && (url.pathname === "/type" || url.pathname === "/key" || url.pathname === "/launch")) {
     if (url.searchParams.get("t") !== TOKEN) return send(res, 401, { error: "bad token" });
     let body;
     try { body = await readBody(req); } catch (e) { return send(res, 400, { error: String(e.message) }); }
@@ -133,11 +172,15 @@ const server = http.createServer(async (req, res) => {
         if (text) await typeText(text);
         if (body.enter) await osa(buildKeyScript(KEYS.enter));
         return send(res, 200, { ok: true });
-      } else {
+      } else if (url.pathname === "/key") {
         const k = KEYS[body.action];
         if (!k) return send(res, 400, { error: "unknown action: " + body.action });
         await osa(buildKeyScript(k));
         return send(res, 200, { ok: true });
+      } else {
+        if (!APPS[body.app]) return send(res, 400, { error: "unknown app: " + body.app });
+        await launchApp(body.app);
+        return send(res, 200, { ok: true, launched: APPS[body.app].label });
       }
     } catch (e) {
       // 最常见：辅助功能权限未授予 → osascript 报 -1719 / -25211 / not allowed。原样回给前端。
