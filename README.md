@@ -70,6 +70,12 @@ per executable:
 Then `launchctl kickstart -k gui/$(id -u)/<label>`. Until this is granted,
 `/type` and `/key` return a `not allowed to send keystrokes (1002)` error.
 
+**Why the .app wrapper**: macOS grants Accessibility per executable. If launchd
+pointed straight at `/opt/homebrew/bin/node`, that hidden path would be hard to
+pick in the permission panel, and a Homebrew node upgrade would move the Cellar
+path and silently invalidate the grant. A signed .app keeps the identity stable
+and easy to spot in the list.
+
 ## Use it from the phone
 
 The startup log (`~/ops-logs/phone-remote/stdout.log`) prints a tokenized URL:
