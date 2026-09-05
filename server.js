@@ -173,7 +173,7 @@ const server = http.createServer(async (req, res) => {
         if (body.enter) await osa(buildKeyScript(KEYS.enter));
         return send(res, 200, { ok: true });
       } else if (url.pathname === "/key") {
-        const k = KEYS[body.action];
+        const k = Object.hasOwn(KEYS, body.action) ? KEYS[body.action] : undefined;
         if (!k) return send(res, 400, { error: "unknown action: " + body.action });
         await osa(buildKeyScript(k));
         return send(res, 200, { ok: true });
