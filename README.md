@@ -132,8 +132,10 @@ with the `LAUNCH_CWD` environment variable on the service.
 
 ## Security
 
-- Bind is LAN/Tailscale only — do **not** port-forward this to the internet.
-  Anything that can reach the port and holds the token owns your keyboard.
+- Binds to `127.0.0.1` by default — only the Mac itself can reach it. To use it
+  from your phone, set `HOST=0.0.0.0` (or your Tailscale IP) explicitly; do
+  **not** port-forward this to the internet. Once opened up, anything that can
+  reach the port and holds the token owns your keyboard.
 - Every injection endpoint checks a token stored in `.token` (gitignored,
   mode 600, generated on first run). Requests without it get a 401.
 - User input is never concatenated into a shell or AppleScript command: text is
