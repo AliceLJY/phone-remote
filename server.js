@@ -19,7 +19,7 @@ const crypto = require("crypto");
 const os = require("os");
 
 const PORT = Number(process.env.PORT) || 8787;
-const HOST = process.env.HOST || "0.0.0.0";
+const HOST = process.env.HOST || "127.0.0.1"; // 默认只听本机；要给手机用，显式传 HOST=0.0.0.0 或 Tailscale IP
 const DIR = __dirname;
 const CLIP_TMP = path.join(DIR, ".clip.tmp"); // 文本中转文件（覆盖写，已 gitignore）
 const LAUNCH_TMP = path.join(DIR, ".launch.command"); // 一键打开的启动脚本（覆盖写，已 gitignore）
@@ -178,7 +178,7 @@ const server = http.createServer(async (req, res) => {
         await osa(buildKeyScript(k));
         return send(res, 200, { ok: true });
       } else {
-        if (!APPS[body.app]) return send(res, 400, { error: "unknown app: " + body.app });
+        if (!Object.hasOwn(APPS, body.app)) return send(res, 400, { error: "unknown app: " + body.app });
         await launchApp(body.app);
         return send(res, 200, { ok: true, launched: APPS[body.app].label });
       }
