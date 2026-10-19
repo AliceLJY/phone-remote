@@ -75,6 +75,7 @@ cat > "$PLIST" <<PLISTEOF
   <key>WorkingDirectory</key><string>$REPO_DIR</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
+  <key>Umask</key><integer>63</integer>
   <key>StandardOutPath</key><string>$LOG_DIR/stdout.log</string>
   <key>StandardErrorPath</key><string>$LOG_DIR/stderr.log</string>
   <key>EnvironmentVariables</key>
