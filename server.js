@@ -26,13 +26,21 @@ const LAUNCH_TMP = path.join(DIR, ".launch.command"); // 一键打开的启动�
 
 // ── 持久 token（首次生成写入 .token，重启后 URL 不变）──
 const tokenFile = path.join(DIR, ".token");
-let TOKEN;
+let TOKEN = "";
 try {
   TOKEN = fs.readFileSync(tokenFile, "utf8").trim();
-} catch {
+} catch {}
+// 空的或过短的 .token 视同没有：否则空 token 会让 ?t= 直接通过校验
+if (TOKEN.length < 16) {
   TOKEN = crypto.randomBytes(16).toString("hex");
   fs.writeFileSync(tokenFile, TOKEN, { mode: 0o600 });
+  fs.chmodSync(tokenFile, 0o600); // 文件原本就在（空的）时 mode 不生效
 }
+const TOKEN_BUF = Buffer.from(TOKEN);
+const tokenOk = (given) => {
+  const buf = Buffer.from(String(given ?? ""));
+  return buf.length === TOKEN_BUF.length && crypto.timingSafeEqual(buf, TOKEN_BUF);
+};
 
 const INDEX = fs.readFileSync(path.join(DIR, "index.html"));
 
@@ -102,7 +110,8 @@ function osa(scriptLines) {
 // 文本走文件、路径为固定常量，绝不拼进脚本，杜绝注入；read as «class utf8» 保证中文正确。
 // simplified: 覆盖 mini 当前剪贴板；.clip.tmp 覆盖写不删（已 gitignore）。
 function typeText(text) {
-  fs.writeFileSync(CLIP_TMP, text, "utf8");
+  fs.writeFileSync(CLIP_TMP, text, { encoding: "utf8", mode: 0o600 });
+  fs.chmodSync(CLIP_TMP, 0o600); // mode 只在新建时生效，旧文件补一次
   return osa([
     `set the clipboard to (read POSIX file "${CLIP_TMP}" as «class utf8»)`,
     'tell application "System Events" to keystroke "v" using command down',
@@ -163,7 +172,7 @@ const server = http.createServer(async (req, res) => {
 
   // 以下为注入类接口，一律校验 token
   if (req.method === "POST" && (url.pathname === "/type" || url.pathname === "/key" || url.pathname === "/launch")) {
-    if (url.searchParams.get("t") !== TOKEN) return send(res, 401, { error: "bad token" });
+    if (!tokenOk(url.searchParams.get("t"))) return send(res, 401, { error: "bad token" });
     let body;
     try { body = await readBody(req); } catch (e) { return send(res, 400, { error: String(e.message) }); }
     try {
