@@ -43,8 +43,12 @@ same setup works on iPhone and Android side by side.
 
 ## Install
 
+Requires macOS 13+, Node.js on your `PATH`, and Xcode Command Line Tools
+(`install.sh` compiles the wrapper with `clang` and signs it with `codesign`;
+install them with `xcode-select --install`). The installer and the keystroke injection (`osascript`) are macOS-only, so there is nothing useful to run on Linux.
+
 ```bash
-git clone https://github.com/<you>/phone-remote.git ~/Projects/phone-remote
+git clone https://github.com/AliceLJY/phone-remote.git ~/Projects/phone-remote
 cd ~/Projects/phone-remote
 ./install.sh
 ```
@@ -56,8 +60,21 @@ Zero npm dependencies — Node's standard library only.
 To run it in the foreground instead:
 
 ```bash
-node server.js     # prints the tokenized phone URL
+node server.js                 # listens on 127.0.0.1 only: the phone can't reach it yet
+HOST=0.0.0.0 node server.js    # reachable from the LAN / Tailscale (see Security)
 ```
+
+Both print the tokenized phone URL. The LaunchAgent that `install.sh` writes
+sets no `HOST`, so the background service also listens on `127.0.0.1` only.
+To reach it from the phone without opening the port to your LAN, forward it
+over Tailscale (this is how the author runs it):
+
+```bash
+tailscale serve --bg --tcp 8787 tcp://127.0.0.1:8787
+```
+
+The phone then uses the Tailscale URL from the startup log. The `.local` LAN
+address it also prints only works if you start the server with `HOST=0.0.0.0`.
 
 ### One manual step: Accessibility
 
@@ -67,7 +84,8 @@ per executable:
 > System Settings → Privacy & Security → Accessibility → **+** → Applications →
 > **Phone Remote** → toggle on
 
-Then `launchctl kickstart -k gui/$(id -u)/<label>`. Until this is granted,
+Then `launchctl kickstart -k gui/$(id -u)/com.example.phone-remote` (the default
+label; use your own if you ran `install.sh` with `PR_LABEL=...`). Until this is granted,
 `/type` and `/key` return a `not allowed to send keystrokes (1002)` error.
 
 **Why the .app wrapper**: macOS grants Accessibility per executable. If launchd
@@ -83,6 +101,9 @@ The startup log (`~/ops-logs/phone-remote/stdout.log`) prints a tokenized URL:
 ```
 http://100.x.y.z:8787/?t=<token>
 ```
+
+The IP comes from `tailscale ip -4`; without Tailscale it prints a literal
+`<本机IP>` ("this machine's IP") placeholder, so put in the Mac's LAN IP yourself.
 
 Open it on the phone (over Tailscale, or `<your-mac>.local:8787` on the same
 LAN), then **Add to Home Screen** — it becomes a full-screen app that carries

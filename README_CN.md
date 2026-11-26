@@ -37,8 +37,12 @@ phone-remote 绕开这条路——不做跨会话转发，而是**在目标 Mac 
 
 ## 安装
 
+需要 macOS 13+、`PATH` 里有 Node.js，以及 Xcode Command Line Tools（`install.sh`
+用 `clang` 编译包装器、用 `codesign` 签名；没有的话先跑 `xcode-select --install`）。
+安装脚本和按键注入（`osascript`）只有 macOS 有，Linux 上装了也用不了。
+
 ```bash
-git clone https://github.com/<你>/phone-remote.git ~/Projects/phone-remote
+git clone https://github.com/AliceLJY/phone-remote.git ~/Projects/phone-remote
 cd ~/Projects/phone-remote
 ./install.sh
 ```
@@ -49,8 +53,20 @@ LaunchAgent（开机自启、崩溃自动重启）并启动服务。零 npm 依�
 想前台跑：
 
 ```bash
-node server.js     # 会打印带 token 的手机访问地址
+node server.js                 # 只听 127.0.0.1：这时手机还连不上
+HOST=0.0.0.0 node server.js    # 局域网 / Tailscale 可达（先看「安全」一节）
 ```
+
+两种都会打印带 token 的手机访问地址。`install.sh` 写的 LaunchAgent 没有设
+`HOST`，所以后台服务同样只听 `127.0.0.1`。想让手机连上、又不对局域网敞开，
+用 Tailscale 把端口转发过去（作者自己就是这么用的）：
+
+```bash
+tailscale serve --bg --tcp 8787 tcp://127.0.0.1:8787
+```
+
+手机用启动日志里的 Tailscale 地址访问。日志里同时打印的 `.local` 局域网地址，
+只有用 `HOST=0.0.0.0` 启动时才连得上。
 
 ### 唯一需要手动点一次的：辅助功能授权
 
@@ -58,7 +74,8 @@ node server.js     # 会打印带 token 的手机访问地址
 
 > 系统设置 → 隐私与安全性 → 辅助功能 → **+** → 应用程序 → **Phone Remote** → 打开开关
 
-然后 `launchctl kickstart -k gui/$(id -u)/<label>` 重启一下。没授权之前，
+然后 `launchctl kickstart -k gui/$(id -u)/com.example.phone-remote` 重启一下（这是默认
+label；如果跑 `install.sh` 时设了 `PR_LABEL=...`，换成你自己的）。没授权之前，
 `/type` 和 `/key` 会返回 `不允许发送按键 (1002)`。
 
 **为什么要包一层 .app**：macOS 按可执行文件授权，若 launchd 直接指
@@ -73,6 +90,8 @@ node server.js     # 会打印带 token 的手机访问地址
 ```
 http://100.x.y.z:8787/?t=<token>
 ```
+
+IP 取自 `tailscale ip -4`；没装 Tailscale 时会原样打印占位符 `<本机IP>`，需要自己换成 Mac 的局域网 IP。
 
 手机上打开它（走 Tailscale，或同一局域网用 `<your-mac>.local:8787`），然后
 **添加到主屏幕**——就成了一个全屏 App，token 带在里面，点开即用。
